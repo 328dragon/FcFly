@@ -27,8 +27,21 @@ Project File Date:  09/07/2026
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'D:\techapps\Keil5\Core\ARM\ARMCC\Bin'
 Build target 'Ano_LX'
+compiling User_Task.c...
+..\FcSrc\User_Task.c(425): warning:  #223-D: function "hover" declared implicitly
+          hover();
+..\FcSrc\User_Task.c(860): warning:  #223-D: function "hover" declared implicitly
+                      if(hover() == 1)
+..\FcSrc\User_Task.c(929): warning:  #223-D: function "hover" declared implicitly
+                          hover();
+..\FcSrc\User_Task.c(1038): warning:  #223-D: function "hover" declared implicitly
+                      hover();
+..\FcSrc\User_Task.c: 4 warnings, 0 errors
+linking...
+Program Size: Code=51808 RO-data=2112 RW-data=476 ZI-data=6300  
+FromELF: creating hex file...
 After Build - User command #1: fromelf.exe --bin -o ./ANO-LX.bin ./build/Ano_LX.axf
-".\build\ANO_LX.axf" - 0 Error(s), 0 Warning(s).
+".\build\ANO_LX.axf" - 0 Error(s), 4 Warning(s).
 
 <h2>Software Packages used:</h2>
 

@@ -146,7 +146,7 @@ extern volatile _Bool _WeHaveGotOpenMvOneFrame;
 /*
  * 连续检测多少次才确认拐弯
  */
-#define TURN_SIGNAL_CONFIRM_COUNT    3
+#define TURN_SIGNAL_CONFIRM_COUNT    2
 
 
 /************************************************************
