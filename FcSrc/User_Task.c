@@ -4,7 +4,6 @@
 #include "LX_FC_Fun.h"
 #include <string.h>
 
-
 /************************************************************
  * 一、OpenMV全局变量
  ************************************************************/
@@ -62,7 +61,6 @@ extern u8 fc_condition;
  */
 extern u8 turn_count;
 
-
 /************************************************************
  * 三、OpenMV数据帧状态
  ************************************************************/
@@ -72,41 +70,41 @@ extern volatile _Bool _WeHaveGotOpenMvOneFrame;
  * 四、角度PID参数
  ************************************************************/
 
-#define ANGLE_PID_KP             1.0f
-#define ANGLE_PID_KI             0.00f
-#define ANGLE_PID_KD             0.20f
+#define ANGLE_PID_KP 1.0f
+#define ANGLE_PID_KI 0.00f
+#define ANGLE_PID_KD 0.20f
 
 /*
  * PID最大输出
  */
-#define ANGLE_PID_MAX            30.0f
+#define ANGLE_PID_MAX 30.0f
 
 /*
  * 积分最大值
  */
-#define ANGLE_PID_I_MAX          30.0f
+#define ANGLE_PID_I_MAX 30.0f
 
 /*
  * 角度死区
  */
-#define ANGLE_DEAD_ZONE          2
+#define ANGLE_DEAD_ZONE 2
 /************************************************************
  * 五、转弯参数
  ************************************************************/
 /*
  * 每次转90°
  */
-#define TURN_ANGLE               90
+#define TURN_ANGLE 90
 
 /*
  * 转弯速度
  */
-#define TURN_SPEED               30
+#define TURN_SPEED 30
 
 /*
  * 转弯前悬停稳定时间
  */
-#define HOVER_STABLE_TIME        1000
+#define HOVER_STABLE_TIME 1000
 
 /*
  * 转弯执行等待时间
@@ -115,56 +113,42 @@ extern volatile _Bool _WeHaveGotOpenMvOneFrame;
  * 这个时间必须根据你的TurnLeft()/TurnRight()
  * 实际实现进一步调整。
  */
-#define TURN_EXECUTE_TIME        10000
+#define TURN_EXECUTE_TIME 10000
 
 /*
  * 一共转4次
  */
-#define TOTAL_TURN_TIMES         4
+#define TOTAL_TURN_TIMES 4
 
 /*
  * 连续检测多少次才确认拐弯
  */
-#define TURN_SIGNAL_CONFIRM_COUNT    2
+#define TURN_SIGNAL_CONFIRM_COUNT 3
 
 /************************************************************
  * 六、交点对齐参数
  ************************************************************/
-/*
- * X方向死区
- */
-#define CROSS_X_DEAD_ZONE        30
-/*
- * Y方向死区
- */
-#define CROSS_Y_DEAD_ZONE        20
-/*
- * 每次调整距离
- */
-#define CROSS_ADJUST_DIST_CM     2
-/*
- * 调整速度
- */
-#define CROSS_ADJUST_SPEED_CMPS  20
-/*
- * 进入死区后稳定确认时间
- */
-#define CROSS_STABLE_TIME_MS     200
+#define CROSS_X_RELOCK_ZONE 80
+#define CROSS_Y_RELOCK_ZONE 60
 /************************************************************
  * 七、巡线运动参数
  ************************************************************/
 /*
  * 每次向前移动5cm
  */
-#define LINE_MOVE_DISTANCE_CM    5
+#define LINE_MOVE_DISTANCE_CM 5
 /*
  * 巡线速度
  */
-#define LINE_MOVE_SPEED_CMPS     30
+#define LINE_MOVE_SPEED_CMPS 30
 /*
  * PID执行周期
  */
-#define LINE_PID_PERIOD_MS       100
+#define LINE_PID_PERIOD_MS 100
+
+#define CORNER_FORWARD_WAIT_MS 100
+#define CORNER_FORWARD_SPEED_CMPS 30
+#define CORNER_FORWARD_DISTANCE_CM 10
 /************************************************************
  * 八、角度PID结构体
  ************************************************************/
@@ -183,22 +167,19 @@ typedef struct
 
 } OpenMV_AnglePID_t;
 
-
 /************************************************************
  * 九、PID对象
  ************************************************************/
 
 static OpenMV_AnglePID_t g_angle_pid =
-{
-    ANGLE_PID_KP,
-    ANGLE_PID_KI,
-    ANGLE_PID_KD,
+    {
+        ANGLE_PID_KP,
+        ANGLE_PID_KI,
+        ANGLE_PID_KD,
 
-    0.0f,
-    0.0f,
-    0.0f
-};
-
+        0.0f,
+        0.0f,
+        0.0f};
 
 /************************************************************
  * 十、PID复位
@@ -212,7 +193,6 @@ static void OpenMV_Angle_PID_Reset(void)
 
     g_angle_pid.output = 0.0f;
 }
-
 
 /************************************************************
  * 十一、角度PID计算
@@ -230,24 +210,21 @@ static float OpenMV_Angle_PID_Calculate(float angle)
 
     float output;
 
-
     /************************************************
      * 目标角度 = 0°
      ************************************************/
 
     error = angle;
 
-
     /************************************************
      * 角度死区
      ************************************************/
 
-    if((error > -ANGLE_DEAD_ZONE) &&
-       (error < ANGLE_DEAD_ZONE))
+    if ((error > -ANGLE_DEAD_ZONE) &&
+        (error < ANGLE_DEAD_ZONE))
     {
         error = 0.0f;
     }
-
 
     /************************************************
      * P
@@ -255,35 +232,30 @@ static float OpenMV_Angle_PID_Calculate(float angle)
 
     p = g_angle_pid.kp * error;
 
-
     /************************************************
      * I
      ************************************************/
 
     g_angle_pid.integral += error;
 
-
     /*
      * 积分限幅
      */
 
-    if(g_angle_pid.integral > ANGLE_PID_I_MAX)
+    if (g_angle_pid.integral > ANGLE_PID_I_MAX)
     {
         g_angle_pid.integral =
             ANGLE_PID_I_MAX;
     }
 
-
-    if(g_angle_pid.integral < -ANGLE_PID_I_MAX)
+    if (g_angle_pid.integral < -ANGLE_PID_I_MAX)
     {
         g_angle_pid.integral =
             -ANGLE_PID_I_MAX;
     }
 
-
     i = g_angle_pid.ki *
         g_angle_pid.integral;
-
 
     /************************************************
      * D
@@ -293,15 +265,12 @@ static float OpenMV_Angle_PID_Calculate(float angle)
         error -
         g_angle_pid.last_error;
 
-
     g_angle_pid.last_error =
         error;
-
 
     d =
         g_angle_pid.kd *
         derivative;
-
 
     /************************************************
      * PID
@@ -310,32 +279,27 @@ static float OpenMV_Angle_PID_Calculate(float angle)
     output =
         p + i + d;
 
-
     /************************************************
      * 输出限幅
      ************************************************/
 
-    if(output > ANGLE_PID_MAX)
+    if (output > ANGLE_PID_MAX)
     {
         output =
             ANGLE_PID_MAX;
     }
 
-
-    if(output < -ANGLE_PID_MAX)
+    if (output < -ANGLE_PID_MAX)
     {
         output =
             -ANGLE_PID_MAX;
     }
 
-
     g_angle_pid.output =
         output;
 
-
     return output;
 }
-
 
 /************************************************************
  * 十二、OpenMV视觉巡线
@@ -353,7 +317,7 @@ static void OpenMV_Angle_PID_Control(void)
      *
      * 100ms执行一次PID
      ************************************************/
-    if(pid_timer < LINE_PID_PERIOD_MS)
+    if (pid_timer < LINE_PID_PERIOD_MS)
     {
         pid_timer += 20;
 
@@ -363,7 +327,7 @@ static void OpenMV_Angle_PID_Control(void)
     /************************************************
      * 没检测到线路
      ************************************************/
-    if(g_openmv_line_state == 0)
+    if (g_openmv_line_state == 0)
     {
         OpenMV_Angle_PID_Reset();
 
@@ -382,9 +346,7 @@ static void OpenMV_Angle_PID_Control(void)
 
     correction =
         OpenMV_Angle_PID_Calculate(
-            (float)g_openmv_angle
-        );
-
+            (float)g_openmv_angle);
 
     /************************************************
      * 根据PID输出判断运动方向
@@ -394,7 +356,7 @@ static void OpenMV_Angle_PID_Control(void)
      * 270° = 左
      ************************************************/
 
-    if(correction > 1.0f)
+    if (correction > 1.0f)
     {
         /*
          * 向右修正
@@ -403,7 +365,7 @@ static void OpenMV_Angle_PID_Control(void)
         direction = 90;
     }
 
-    else if(correction < -1.0f)
+    else if (correction < -1.0f)
     {
         /*
          * 向左修正
@@ -421,7 +383,6 @@ static void OpenMV_Angle_PID_Control(void)
         direction = 0;
     }
 
-
     /************************************************
      * 执行运动
      ************************************************/
@@ -429,11 +390,8 @@ static void OpenMV_Angle_PID_Control(void)
     Horizontal_Move(
         LINE_MOVE_DISTANCE_CM,
         LINE_MOVE_SPEED_CMPS,
-        direction
-    );
+        direction);
 }
-
-
 /************************************************************
  * 十三、自动任务
  ************************************************************/
@@ -449,7 +407,6 @@ void UserTask_OneKeyCmd(void)
 
     static u16 time_dly_cnt_ms = 0;
 
-
     /********************************************************
      * 拐点连续检测计数
      ********************************************************/
@@ -458,16 +415,15 @@ void UserTask_OneKeyCmd(void)
 
     static u8 turn_direction = 0;
     static u8 turn_start_flag = 0;
+    static u8 corner_forward_started = 0;
 
-
-    if(rc_in.no_signal == 0)
+    if (rc_in.no_signal == 0)
     {
 
-
-        if(rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 1300 &&
-           rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 1700)
+        if (rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 1300 &&
+            rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 1700)
         {
-            if(one_key_takeoff_f == 0)
+            if (one_key_takeoff_f == 0)
             {
                 one_key_takeoff_f =
                     OneKey_Takeoff(100);
@@ -479,11 +435,10 @@ void UserTask_OneKeyCmd(void)
             one_key_takeoff_f = 0;
         }
 
-
-        if(rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 800 &&
-           rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 1200)
+        if (rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 800 &&
+            rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 1200)
         {
-            if(one_key_land_f == 0)
+            if (one_key_land_f == 0)
             {
                 one_key_land_f =
                     OneKey_Land();
@@ -495,12 +450,11 @@ void UserTask_OneKeyCmd(void)
             one_key_land_f = 0;
         }
 
-
-        if(rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 1700 &&
-           rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 2200)
+        if (rc_in.rc_ch.st_data.ch_[ch_6_aux2] > 1700 &&
+            rc_in.rc_ch.st_data.ch_[ch_6_aux2] < 2200)
         {
 
-            if(one_key_mission_f == 0)
+            if (one_key_mission_f == 0)
             {
                 one_key_mission_f = 1;
                 mission_step = 1;
@@ -509,7 +463,7 @@ void UserTask_OneKeyCmd(void)
                 turn_direction = 0;
                 turn_start_flag = 0;
                 turn_count = 0;
-                OpenMV_Angle_PID_Reset();
+                                OpenMV_Angle_PID_Reset();
             }
         }
 
@@ -517,315 +471,252 @@ void UserTask_OneKeyCmd(void)
         {
             one_key_mission_f = 0;
         }
-        if(one_key_mission_f == 1)
+        if (one_key_mission_f == 1)
         {
-            switch(mission_step)
+            switch (mission_step)
             {
 
-                case 1:
-                {
-                    mission_step +=
-                        LX_Change_Mode(3);
-                }
-                break;
+            case 1:
+            {
+                mission_step +=
+                    LX_Change_Mode(3);
+            }
+            break;
 
-                case 2:
-                {
-                    mission_step +=
-                        FC_Unlock();
-                }
-                break;
+            case 2:
+            {
+                mission_step +=
+                    FC_Unlock();
+            }
+            break;
 
-                case 3:
+            case 3:
+            {
+                if (time_dly_cnt_ms < 2000)
                 {
-                    if(time_dly_cnt_ms < 2000)
+                    time_dly_cnt_ms += 20;
+                }
+
+                else
+                {
+                    time_dly_cnt_ms = 0;
+
+                    mission_step = 4;
+                }
+            }
+            break;
+
+            case 4:
+            {
+                fc_condition = 3;
+
+                mission_step +=
+                    OneKey_Takeoff(100);
+            }
+            break;
+
+            case 5:
+            {
+                if (time_dly_cnt_ms < 5000)
+                {
+                    time_dly_cnt_ms += 20;
+                }
+
+                else
+                {
+                    time_dly_cnt_ms = 0;
+                    OpenMV_Angle_PID_Reset();
+
+                    mission_step = 6;
+                }
+            }
+            break;
+
+            case 6:
+            {
+                fc_condition = 1;
+                OpenMV_Angle_PID_Control();
+                if (g_openmv_cross_flag == 1)
+                {
+                    OpenMV_Angle_PID_Reset();
+                    time_dly_cnt_ms = 0;
+                    turn_signal_cnt = 0;
+                    mission_step = 7;
+                }
+            }
+            break;
+            case 7:
+            {
+                fc_condition = 4;
+
+                /*
+                 * 检测到拐点后，不再进行X/Y中心对齐。
+                 * 直接沿当前机头方向向前移动10cm。
+                 *
+                 * 10cm / 30cm/s ≈ 333ms，
+                 * 这里等待500ms给飞控留出执行余量。
+                 */
+                if (corner_forward_started == 0)
+                {
+                    Horizontal_Move(
+                        CORNER_FORWARD_DISTANCE_CM,
+                        CORNER_FORWARD_SPEED_CMPS,
+                        0);
+
+                    corner_forward_started = 1;
+                    time_dly_cnt_ms = 0;
+                }
+                else
+                {
+                    if (time_dly_cnt_ms < CORNER_FORWARD_WAIT_MS)
                     {
                         time_dly_cnt_ms += 20;
                     }
-
                     else
                     {
                         time_dly_cnt_ms = 0;
-
-                        mission_step = 4;
+                        turn_signal_cnt = 0;
+                        mission_step = 8;
                     }
                 }
-                break;
+            }
+            break;
 
-                case 4:
+            case 8:
+            {
+                fc_condition = 8;
+
+                /*
+                 * 不再读取g_openmv_cross_x / g_openmv_cross_y。
+                 * 只确认OpenMV给出的下一转弯方向。
+                 */
+                if (g_openmv_next_direction == 2 ||
+                    g_openmv_next_direction == 3)
                 {
-                    fc_condition = 3;
-
-                    mission_step +=
-                        OneKey_Takeoff(100);
-                }
-                break;
-
-
-                case 5:
-                {
-                    if(time_dly_cnt_ms < 5000)
+                    if (turn_signal_cnt == 0)
                     {
-                        time_dly_cnt_ms += 20;
+                        turn_direction = g_openmv_next_direction;
+                        turn_signal_cnt = 1;
                     }
-
+                    else if (g_openmv_next_direction == turn_direction)
+                    {
+                        turn_signal_cnt++;
+                    }
                     else
                     {
-                        time_dly_cnt_ms = 0;
-                        OpenMV_Angle_PID_Reset();
+                        /* 方向变化，重新确认 */
+                        turn_direction = g_openmv_next_direction;
+                        turn_signal_cnt = 1;
+                    }
 
+                    /* 连续2次检测到相同方向后执行转弯 */
+                    if (turn_signal_cnt >= TURN_SIGNAL_CONFIRM_COUNT)
+                    {
+                        turn_signal_cnt = 0;
+                        time_dly_cnt_ms = 0;
+                        turn_start_flag = 0;
+                        mission_step = 9;
+                    }
+                }
+                else
+                {
+                    turn_signal_cnt = 0;
+                }
+            }
+            break;
+
+            case 9:
+            {
+                if (turn_start_flag == 0)
+                {
+                    if (turn_direction == 2)
+                    {
+                        fc_condition = 2;
+
+                        if (TurnLeft(
+                                TURN_ANGLE,
+                                TURN_SPEED) == 1)
+                        {
+                            turn_start_flag = 1;
+                            time_dly_cnt_ms = 0;
+                        }
+                    }
+                    else if (turn_direction == 3)
+                    {
+                        fc_condition = 5;
+
+                        if (TurnRight(
+                                TURN_ANGLE,
+                                TURN_SPEED) == 1)
+                        {
+                            turn_start_flag = 1;
+                            time_dly_cnt_ms = 0;
+                        }
+                    }
+                    else
+                    {
+                        /* 没有有效方向，返回巡线 */
+                        turn_start_flag = 0;
+                        turn_signal_cnt = 0;
+                        turn_direction = 0;
+                        corner_forward_started = 0;
                         mission_step = 6;
                     }
                 }
-                break;
-
-                case 6:
+                else
                 {
-                    fc_condition = 1;
-                    OpenMV_Angle_PID_Control();
-                    if(g_openmv_cross_flag == 1)
+                    if (time_dly_cnt_ms < TURN_EXECUTE_TIME)
                     {
-                        OpenMV_Angle_PID_Reset();
-                        time_dly_cnt_ms = 0;
-                        turn_signal_cnt = 0;
-                        mission_step = 7;
+                        time_dly_cnt_ms += 20;
                     }
-                }
-                break;
-                case 7:
-                {
-                    fc_condition = 4;
-                    if(hover() == 1)
-                    {
-                        if(time_dly_cnt_ms < HOVER_STABLE_TIME)
-                        {
-                            time_dly_cnt_ms += 20;
-                        }
-
-                        else
-                        {
-                            time_dly_cnt_ms = 0;
-                            turn_signal_cnt = 0;
-                            mission_step = 8;
-                        }
-                    }
-                }
-                break;
-
-                case 8:
-                {
-                    fc_condition = 8;
-
-
-                    //////////////////////////////////////////////////
-                    // 没有检测到交点
-                    //////////////////////////////////////////////////
-
-                    if(g_openmv_cross_flag == 0)
-                    {
-                        time_dly_cnt_ms = 0;
-
-                        turn_signal_cnt = 0;
-
-                        hover();
-
-                        break;
-                    }
-
-
-                    //////////////////////////////////////////////////
-                    // 第一优先级：
-                    // X方向校准
-                    //////////////////////////////////////////////////
-
-                    if(g_openmv_cross_x > CROSS_X_DEAD_ZONE)
-                    {
-                        time_dly_cnt_ms = 0;
-
-                        turn_signal_cnt = 0;
-                        Horizontal_Move(
-                            CROSS_ADJUST_DIST_CM,
-                            CROSS_ADJUST_SPEED_CMPS,
-                            90
-                        );
-
-                        break;
-                    }
-                    else if(g_openmv_cross_x < -CROSS_X_DEAD_ZONE)
-                    {
-                        time_dly_cnt_ms = 0;
-
-                        turn_signal_cnt = 0;
-                        Horizontal_Move(
-                            CROSS_ADJUST_DIST_CM,
-                            CROSS_ADJUST_SPEED_CMPS,
-                            270
-                        );
-
-                        break;
-                    }
-                    if(g_openmv_cross_y > CROSS_Y_DEAD_ZONE)
-                    {
-                        time_dly_cnt_ms = 0;
-
-                        turn_signal_cnt = 0;
-                        Horizontal_Move(
-                            CROSS_ADJUST_DIST_CM,
-                            CROSS_ADJUST_SPEED_CMPS,
-                            0
-                        );
-
-                        break;
-                    }
-
-
-                    else if(g_openmv_cross_y < -CROSS_Y_DEAD_ZONE)
-                    {
-                        time_dly_cnt_ms = 0;
-
-                        turn_signal_cnt = 0;
-                        Horizontal_Move(
-                            CROSS_ADJUST_DIST_CM,
-                            CROSS_ADJUST_SPEED_CMPS,
-                            180
-                        );
-
-                        break;
-                    }
-                    hover();
-                    if(g_openmv_next_direction == 2 ||
-                       g_openmv_next_direction == 3)
-                    {
-                        if(turn_signal_cnt == 0)
-                        {
-                            turn_direction =
-                                g_openmv_next_direction;
-
-                            turn_signal_cnt = 1;
-                        }
-                        else if(g_openmv_next_direction ==
-                                turn_direction)
-                        {
-                            turn_signal_cnt++;
-                        }
-                        else
-                        {
-                            turn_direction =
-                                g_openmv_next_direction;
-
-                            turn_signal_cnt = 1;
-                        }
-                        if(turn_signal_cnt >=
-                           TURN_SIGNAL_CONFIRM_COUNT)
-                        {
-                            turn_signal_cnt = 0;
-                            time_dly_cnt_ms = 0;
-                            turn_start_flag = 0;
-                            mission_step = 9;
-                        }
-                    }
-
                     else
                     {
-                        turn_signal_cnt = 0;
-                    }
-                }
-                break;
-                case 9:
-                {
-                    if(turn_start_flag == 0)
-                    {
-                        if(turn_direction == 2)
+                        time_dly_cnt_ms = 0;
+                        turn_start_flag = 0;
+                        turn_count++;
+
+                        OpenMV_Angle_PID_Reset();
+                        turn_direction = 0;
+                        corner_forward_started = 0;
+
+                        if (turn_count >= TOTAL_TURN_TIMES)
                         {
-                            fc_condition = 2;
-
-
-                            if(TurnLeft(
-                                    TURN_ANGLE,
-                                    TURN_SPEED) == 1)
-                            {
-                                turn_start_flag = 1;
-
-                                time_dly_cnt_ms = 0;
-                            }
-                        }
-                        else if(turn_direction == 3)
-                        {
-                            fc_condition = 5;
-
-
-                            if(TurnRight(
-                                    TURN_ANGLE,
-                                    TURN_SPEED) == 1)
-                            {
-                                turn_start_flag = 1;
-
-                                time_dly_cnt_ms = 0;
-                            }
+                            mission_step = 10;
                         }
                         else
                         {
-                            turn_start_flag = 0;
-
-                            turn_signal_cnt = 0;
-
+                            /* 转完90°后继续巡线 */
                             mission_step = 6;
                         }
                     }
-                    else
-                    {
-                        if(time_dly_cnt_ms < TURN_EXECUTE_TIME)
-                        {
-                            time_dly_cnt_ms += 20;
-                        }
-
-                        else
-                        {
-                            time_dly_cnt_ms = 0;
-                            turn_start_flag = 0;
-                            turn_count++;
-                            OpenMV_Angle_PID_Reset();
-                            turn_direction = 0;
-
-                            if(turn_count >= TOTAL_TURN_TIMES)
-                            {
-
-                                mission_step = 10;
-                            }
-
-                            else
-                            {
-
-                                mission_step = 6;
-                            }
-                        }
-                    }
                 }
-                break;
-                case 10:
-                {
-                    fc_condition = 6;
+            }
+            break;
 
-                    OneKey_Land();
-                }
-                break;
-                default:
-                {
-                    mission_step = 0;
+            case 10:
+            {
+                fc_condition = 6;
+                OneKey_Land();
+            }
+            break;
 
-                    time_dly_cnt_ms = 0;
+            default:
+            {
+                mission_step = 0;
 
-                    turn_signal_cnt = 0;
+                time_dly_cnt_ms = 0;
 
-                    turn_direction = 0;
+                turn_signal_cnt = 0;
 
-                    turn_start_flag = 0;
+                turn_direction = 0;
 
-                    turn_count = 0;
+                turn_start_flag = 0;
 
-                    OpenMV_Angle_PID_Reset();
-                }
-                break;
+                turn_count = 0;
+
+                OpenMV_Angle_PID_Reset();
+            }
+            break;
             }
         }
 
