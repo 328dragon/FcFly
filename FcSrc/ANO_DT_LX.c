@@ -346,9 +346,9 @@ static void Add_Send_Data(u8 frame_num, u8 *_cnt, u8 send_buffer[])
     // ==================================================
     // 小球数量
     // ==================================================
-    send_buffer[6] = g_corner_red_count;
-    send_buffer[7] = g_corner_blue_count;
-    send_buffer[8] = g_corner_green_count;
+//    send_buffer[6] = g_corner_red_count;
+//    send_buffer[7] = g_corner_blue_count;
+//    send_buffer[8] = g_corner_green_count;
 
     // ==================================================
     // 飞控运动状态
